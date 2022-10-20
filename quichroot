@@ -81,7 +81,7 @@ quichroot() {
 	pmount sys -t sysfs "${_tgt}/sys" -o ro,nosuid,noexec,nodev
 	mountpoint -q /sys/firmware/efi/efivars && \
 	pmount efivarfs -t efivarfs "${_tgt}/sys/firmware/efi/efivars"
-	pmount efivarfs -t tmpfs "${_tgt}/tmp" -o defaults,nosuid,nodev,size=50%
+	pmount tmp -t tmpfs "${_tgt}/tmp" -o defaults,nosuid,nodev,size=50%
 	[ -e /etc/resolv.conf ] && cp /etc/resolv.conf ${_tgt}/etc/resolv.conf
 	
 	log 'Entering chroot environment ... '
