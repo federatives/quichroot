@@ -5,7 +5,9 @@ all:
 	@echo Install quichroot by running \'make install\'.
 
 uninstall:
-	rm -rf $(SBINDIR)/quichroot
+	@rm -rf $(SBINDIR)/quichroot
 
 install:
-	install -Dm755 quichroot $(SBINDIR)/quichroot
+	@chmod +x quichroot
+	@install -Dm755 quichroot $(SBINDIR)/quichroot
+	
