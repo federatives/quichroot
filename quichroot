@@ -15,7 +15,7 @@
 #  limitations under the License.
 #
 
-_version=1
+_version=2
 
 version() {
 	printf "quichroot ${_version}\n"
@@ -56,7 +56,7 @@ clean() {
 }
 
 die() {
-	printf "\e[0;31mERROR: \e[0m${@}\n"
+	printf "ERROR: ${@}\n"
 	exit 1
 }
 
