@@ -1,0 +1,99 @@
+#!/bin/sh
+#
+#    Copyright 2022 federatives
+#
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+#
+
+_version=1
+
+version() {
+	printf "quichroot ${_version}\n"
+}
+
+usage() {
+	cat <<EOF
+usage: quichroot <chroot> <command>
+usage: quichroot <argument>
+
+	-h, --help	Show usage message
+	-v, --version	Show version of this program
+
+quichroot is a shell script that makes setting up a chroot quick, and
+deals with all the pseudo filesystems for you. Inspired
+by kiss-chroot and arch-chroot.
+
+By default, quichroot will use /bin/sh if <command> is not specified.
+
+Report bugs at https://github.com/federatives/quichroot
+EOF
+}
+
+log() {
+	printf "quichroot: ${@}\n"
+}
+
+clean() {
+	log 'Unmounting pseudo filesystems ... '
+	umount -v "${_tgt}/dev/shm"
+	umount -v "${_tgt}/dev/pts"
+	umount -v "${_tgt}/dev"
+	umount -v "${_tgt}/proc"
+	umount -v "${_tgt}/run"
+	umount -v "${_tgt}/sys/firmware/efi/efivars"
+	umount -v "${_tgt}/sys"
+	umount -v "${_tgt}/tmp"
+}
+
+die() {
+	printf "\e[0;31mERROR: \e[0m${@}\n"
+	exit 1
+}
+
+pmount() {
+	mountpoint -q ${_tgt} || mount -v "${@}" || die 'mount(8) returned exit status 1'
+}
+
+quichroot() {
+	[ "$(id -u)" -eq 0 ] || die 'Must be run as root'
+	# Remove trailing /
+	# Props to Dylan Araps for knowing whatever this variable junk is.
+	_tgt="${1%"${1##*[!/]}"}"
+	[ -d "${_tgt}" ] || die 'Path does not exist or is not a directory'
+	trap 'clean' EXIT INT
+	
+	log 'Mounting pseudo filesystems ... '
+	pmount dev -t devtmpfs "${_tgt}/dev" -o nosuid,mode=0755
+	pmount devpts -t devpts "${_tgt}/dev/pts" -o nosuid,noexec,gid=5,mode=0620
+	pmount shm -t tmpfs "${_tgt}/dev/shm" -o nosuid,noexec,nodev,mode=1777
+	pmount proc -t proc "${_tgt}/proc" -o nosuid,noexec,nodev
+	pmount run -t tmpfs "${_tgt}/run" -o nosuid,nodev,mode=0755
+	pmount sys -t sysfs "${_tgt}/sys" -o ro,nosuid,noexec,nodev
+	mountpoint -q /sys/firmware/efi/efivars && \
+	pmount efivarfs -t efivarfs "${_tgt}/sys/firmware/efi/efivars"
+	pmount efivarfs -t tmpfs "${_tgt}/tmp" -o defaults,nosuid,nodev,size=50%
+	[ -e /etc/resolv.conf ] && cp /etc/resolv.conf ${_tgt}/etc/resolv.conf
+	
+	log 'Entering chroot environment ... '
+	chroot ${_tgt} ${2:-/bin/sh} || die 'chroot(1) returned exit status 1'
+}
+
+if [ -n "$1" ]; then
+	case "$1" in
+		-h|--help) usage; exit 0;;
+		-v|--version) version; exit 0;;
+		*) quichroot "$1";;
+	esac
+else
+	usage; exit 1
+fi
