@@ -15,7 +15,7 @@
 #  limitations under the License.
 #
 
-_version=2
+_version=3
 
 version() {
 	printf "quichroot ${_version}\n"
@@ -92,7 +92,7 @@ if [ -n "$1" ]; then
 	case "$1" in
 		-h|--help) usage; exit 0;;
 		-v|--version) version; exit 0;;
-		*) quichroot "$1";;
+		*) quichroot "$1" "$2";;
 	esac
 else
 	usage; exit 1
